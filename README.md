@@ -25,23 +25,24 @@ This project closes both gaps for **my own three devices**: MacBook, Galaxy S25,
 
 The accept-tap friction is baked into Quick Share / AirDrop's trust model for *unknown* senders — it cannot be removed while using their protocol. So paired devices speak their own protocol instead: mDNS discovery, one-time QR pairing, TLS with certificate pinning, unconditional auto-accept between paired devices (the KDE Connect trust model, purpose-built for this device trio).
 
-The hotspot leg needs no privileged API on the phone: the Mac triggers a Bluetooth connection, and a Samsung **Modes & Routines** rule ("when Mac connects via Bluetooth → turn on Mobile Hotspot") does the toggling with system-level rights.
+The hotspot leg needs no privileged API on the phone: the Mac triggers a Bluetooth connection, the companion app catches the `ACL_CONNECTED` broadcast, and an AccessibilityService flips the hotspot switch in Settings (both no-code paths — shell tethering API and Samsung Routines — proved blocked; see [M1 findings](docs/M1_HOTSPOT_FINDINGS.md)).
 
 ```mermaid
 graph LR
   subgraph mac["Mac (macOS)"]
-    MB["Menu bar app<br/>Swift + SwiftUI"]
-    FX["Finder extension<br/>right-click send"]
+    MB["Menu bar app<br/>Swift, SwiftPM"]
+    QA["Finder Quick Action<br/>right-click send"]
     BT["Bluetooth trigger<br/>blueutil"]
-    MB --- FX
+    MB --- QA
     MB --- BT
   end
   subgraph galaxy["Galaxy S25 / Tab S11 Ultra"]
     APP["Companion app<br/>Kotlin, foreground service"]
-    RT["Modes & Routines<br/>BT connected → Hotspot ON"]
+    ACC["AccessibilityService<br/>ACL_CONNECTED → Hotspot ON"]
+    APP --- ACC
   end
-  MB <-->|"mDNS discovery + TLS 1.3, cert-pinned"| APP
-  BT -->|"BT connect event"| RT
+  MB <-->|"mDNS discovery + TLS, cert-pinned"| APP
+  BT -->|"BT connect event"| ACC
 ```
 
 ## How it's different
@@ -59,26 +60,25 @@ The trade-off is explicit: one set-and-forget companion app on the phone buys ze
 ## Roadmap
 
 - [x] **M1 — One-click hotspot (validation)**: on-device testing showed the two no-code paths (shell `startTethering`, Samsung Routine BT trigger) are both blocked on Android 16 — see [findings](docs/M1_HOTSPOT_FINDINGS.md). Hotspot folds into the companion app: catch `ACL_CONNECTED` directly + accessibility-toggle the tile.
-- [ ] **M2 — Transfer core + hotspot toggle**: companion app (mDNS + QR pairing + TLS pinning, auto-accept receive) + `ACL_CONNECTED` listener → AccessibilityService hotspot toggle
-- [ ] **M3 — OS integration**: Finder extension, Android share sheet target, tablet rollout
+- [x] **M2 — Transfer core + hotspot toggle**: companion app (mDNS + code pairing + TLS pinning, auto-accept receive) + Mac menu-bar app (Bonjour, pinned TLS, send/receive, one-click hotspot) + `ACL_CONNECTED` listener → AccessibilityService hotspot toggle. Pairing uses an 8-char code with an HMAC binding both TLS fingerprints (QR dropped: mDNS already carries host/port/fp, so a camera stack bought nothing) — see [protocol](docs/PROTOCOL.md).
+- [ ] **M3 — OS integration**: Finder Quick Action ("Send to Galaxy"), Android share sheet target, tablet rollout
 - [ ] **M4 — Extras**: clipboard push (Mac → phone), transfer history
 
 ## Repo layout
 
 ```
-macos/    Swift menu bar app + Finder extension   (M2+)
-android/  Kotlin companion app                    (M2+)
-scripts/  M1 hotspot scripts
-docs/     protocol notes
+macos/    Swift menu bar app (SwiftPM) + build-app.sh + Quick Action
+android/  Kotlin companion app
+docs/     protocol spec, M1 findings, test checklist
 ```
 
 ## Stack
 
-Swift 6 / SwiftUI, Network.framework (Bonjour + TLS) · Kotlin, NSD, foreground service · blueutil, Samsung Modes & Routines
+Swift, AppKit + Network.framework (Bonjour + TLS) · Kotlin, NSD, foreground service, AccessibilityService · blueutil
 
 ## Status
 
-Pre-M1 — project charter and hotspot validation. Built for a personal 3-device setup first; generalization later, maybe.
+M2 — transfer core and one-click hotspot implemented on both sides; on-device validation per [docs/TESTING.md](docs/TESTING.md). Built for a personal 3-device setup first; generalization later, maybe.
 
 ## License
 
