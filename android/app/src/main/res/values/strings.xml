@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mac-Galaxy Bridge</string>
+    <string name="accessibility_label">Mac-Galaxy Bridge hotspot toggle</string>
+    <string name="accessibility_description">Lets the bridge turn the mobile hotspot on/off when your Mac connects, so you never have to tap it yourself.</string>
+</resources>
