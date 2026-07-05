@@ -58,8 +58,8 @@ The trade-off is explicit: one set-and-forget companion app on the phone buys ze
 
 ## Roadmap
 
-- [ ] **M1 — One-click hotspot**: validate the BT-connect → Routine trigger, `blueutil` connect script, menu bar toggle
-- [ ] **M2 — Transfer core**: mDNS + QR pairing + TLS pinning, auto-accept receive on both ends
+- [x] **M1 — One-click hotspot (validation)**: on-device testing showed the two no-code paths (shell `startTethering`, Samsung Routine BT trigger) are both blocked on Android 16 — see [findings](docs/M1_HOTSPOT_FINDINGS.md). Hotspot folds into the companion app: catch `ACL_CONNECTED` directly + accessibility-toggle the tile.
+- [ ] **M2 — Transfer core + hotspot toggle**: companion app (mDNS + QR pairing + TLS pinning, auto-accept receive) + `ACL_CONNECTED` listener → AccessibilityService hotspot toggle
 - [ ] **M3 — OS integration**: Finder extension, Android share sheet target, tablet rollout
 - [ ] **M4 — Extras**: clipboard push (Mac → phone), transfer history
 
