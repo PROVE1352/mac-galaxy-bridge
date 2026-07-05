@@ -5,9 +5,8 @@ enum MGBridgeMain {
     static func main() {
         let args = CommandLine.arguments
         if args.count >= 2, args[1] == "send" {
-            // Quick Action / CLI path — lands with the command server in M3.
-            FileHandle.standardError.write(Data("mgbridge send: not wired up yet (M3)\n".utf8))
-            exit(1)
+            // Quick Action / CLI path: hand the paths to the running menu-bar app.
+            exit(CommandClient.send(paths: Array(args.dropFirst(2))))
         }
 
         let app = NSApplication.shared

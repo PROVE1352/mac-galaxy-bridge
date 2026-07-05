@@ -11,6 +11,10 @@ done. (Automated coverage — framing, codecs, pinning, pairing HMAC — runs wi
       install `app/build/outputs/apk/debug/app-debug.apk` on S25 (and Tab S11)
 - [ ] Mac: `cd macos && swift test && ./scripts/build-app.sh`,
       `cp -R MGBridge.app ~/Applications/ && open ~/Applications/MGBridge.app`
+- [ ] Mac Quick Action: `cp -R "macos/quickaction/Send to Galaxy.workflow" ~/Library/Services/`
+      (if Finder doesn't show it under Quick Actions, open the .workflow in Automator
+      once and save — the shell one-liner is `"$HOME/Applications/MGBridge.app/Contents/MacOS/mgbridge" send "$@"`,
+      input "as arguments")
 - [ ] First Mac launch: expect Local Network prompt, notification prompt, and (on
       first receive) a Downloads-folder prompt; firewall prompt on first listen —
       allow all. Re-running `build-app.sh` re-signs ad hoc and may re-prompt.

@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let server = Server()
     private let browser = Browser()
+    private let commandServer = CommandServer()
     private var found: [Browser.Found] = []
     private var activeSends: [ObjectIdentifier: SendSession] = [:]
     private let statusLine = NSMenuItem(title: "Status: starting…", action: nil, keyEquivalent: "")
@@ -36,6 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 self?.found = found
             }
+        }
+        commandServer.start { [weak self] paths in
+            let urls = paths.map { URL(fileURLWithPath: $0) }
+            DispatchQueue.main.async { self?.sendFiles(urls) }
         }
         Notifier.requestAuthorization()
 
