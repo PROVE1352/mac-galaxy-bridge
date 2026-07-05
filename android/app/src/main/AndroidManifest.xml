@@ -9,6 +9,7 @@
 
     <application
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight">
@@ -26,6 +27,17 @@
             android:name=".PairingActivity"
             android:exported="false"
             android:label="Pair with Mac" />
+
+        <activity
+            android:name=".history.HistoryActivity"
+            android:exported="false"
+            android:label="Transfer history" />
+
+        <activity
+            android:name=".CopyClipActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.AppCompat.DayNight.Dialog" />
 
         <activity
             android:name=".ShareActivity"

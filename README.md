@@ -61,8 +61,8 @@ The trade-off is explicit: one set-and-forget companion app on the phone buys ze
 
 - [x] **M1 — One-click hotspot (validation)**: on-device testing showed the two no-code paths (shell `startTethering`, Samsung Routine BT trigger) are both blocked on Android 16 — see [findings](docs/M1_HOTSPOT_FINDINGS.md). Hotspot folds into the companion app: catch `ACL_CONNECTED` directly + accessibility-toggle the tile.
 - [x] **M2 — Transfer core + hotspot toggle**: companion app (mDNS + code pairing + TLS pinning, auto-accept receive) + Mac menu-bar app (Bonjour, pinned TLS, send/receive, one-click hotspot) + `ACL_CONNECTED` listener → AccessibilityService hotspot toggle. Pairing uses an 8-char code with an HMAC binding both TLS fingerprints (QR dropped: mDNS already carries host/port/fp, so a camera stack bought nothing) — see [protocol](docs/PROTOCOL.md).
-- [ ] **M3 — OS integration**: Finder Quick Action ("Send to Galaxy"), Android share sheet target, tablet rollout
-- [ ] **M4 — Extras**: clipboard push (Mac → phone), transfer history
+- [x] **M3 — OS integration**: Finder Quick Action ("Send to Galaxy"), Android share sheet target, tablet rollout
+- [x] **M4 — Extras**: clipboard push (Mac → phone, with a notification-Copy fallback for One UI's background-clipboard block), JSONL transfer history on both sides
 
 ## Repo layout
 
@@ -78,7 +78,7 @@ Swift, AppKit + Network.framework (Bonjour + TLS) · Kotlin, NSD, foreground ser
 
 ## Status
 
-M2 — transfer core and one-click hotspot implemented on both sides; on-device validation per [docs/TESTING.md](docs/TESTING.md). Built for a personal 3-device setup first; generalization later, maybe.
+M2–M4 implemented on both sides; on-device validation per [docs/TESTING.md](docs/TESTING.md). Built for a personal 3-device setup first; generalization later, maybe.
 
 ## License
 

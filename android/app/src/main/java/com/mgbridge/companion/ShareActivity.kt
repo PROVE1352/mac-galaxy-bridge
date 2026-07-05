@@ -47,8 +47,8 @@ class ShareActivity : AppCompatActivity() {
         status.text = "Sending ${uris.size} item(s) to your Mac…"
         scope.launch {
             try {
-                PeerConnector.connect(this@ShareActivity).use { socket ->
-                    val ok = Sender(this@ShareActivity).send(socket, uris) { i, sent, total ->
+                PeerConnector.connect(this@ShareActivity).use { conn ->
+                    val ok = Sender(this@ShareActivity).send(conn.socket, uris, conn.peerName) { i, sent, total ->
                         if (total > 0) runOnUiThread {
                             status.text = "Sending ${i + 1}/${uris.size} — ${(sent * 100 / total)}%"
                         }

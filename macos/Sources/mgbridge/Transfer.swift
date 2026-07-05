@@ -236,6 +236,16 @@ final class InboundSession {
         }
         send(.receipt(ok: ok))
         let peer = peerName
+        for (i, item) in received.enumerated() {
+            History.append(History.Entry(
+                ts: Date().timeIntervalSince1970,
+                dir: "in",
+                peer: peer,
+                name: Framing.sanitizeName(item.meta.name),
+                size: item.meta.size,
+                ok: ok[i]
+            ))
+        }
         received = []
         offer = []
         DispatchQueue.main.async {

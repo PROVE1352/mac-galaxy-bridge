@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import com.mgbridge.companion.BridgeService
+import com.mgbridge.companion.history.HistoryStore
 import com.mgbridge.companion.net.Discovery
 import com.mgbridge.companion.net.FileMeta
 import com.mgbridge.companion.net.Frame
@@ -25,11 +26,13 @@ class Sender(private val ctx: Context) {
 
     /**
      * Sends [uris]; returns the receiver's per-file verdicts.
+     * @param peerName only for the history log.
      * @throws RejectedException if the peer rejects the offer.
      */
     fun send(
         socket: SSLSocket,
         uris: List<Uri>,
+        peerName: String = "?",
         onProgress: ((fileIndex: Int, sentBytes: Long, totalBytes: Long) -> Unit)? = null
     ): List<Boolean> {
         val staged = uris.map { stage(it) }
@@ -64,6 +67,15 @@ class Sender(private val ctx: Context) {
                 throw IllegalStateException("bad receipt: $receipt")
             }
             Framing.writeFrame(out, Frame.Bye)
+            staged.forEachIndexed { i, s ->
+                HistoryStore.append(
+                    ctx,
+                    HistoryStore.Entry(
+                        System.currentTimeMillis(), "out", peerName,
+                        s.meta.name, s.meta.size, receipt.ok[i]
+                    )
+                )
+            }
             Log.i(BridgeService.TAG, "sent ${receipt.ok.count { it }}/${receipt.ok.size} files")
             return receipt.ok
         } finally {

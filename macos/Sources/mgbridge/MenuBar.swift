@@ -1,8 +1,9 @@
 import AppKit
 
 /// The whole UI: an NSStatusItem menu. Networking state lives on Bridge.queue;
-/// everything here hops to main.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+/// everything here hops to main. The menu repopulates on open (NSMenuDelegate)
+/// so pairing and history stay fresh without bookkeeping.
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private let server = Server()
@@ -60,8 +61,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: menu
 
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        populate(menu)
+    }
+
     private func rebuildMenu() {
-        let menu = NSMenu()
+        let menu = statusItem.menu ?? NSMenu()
+        menu.delegate = self
+        populate(menu)
+        statusItem.menu = menu
+    }
+
+    private func populate(_ menu: NSMenu) {
+        menu.removeAllItems()
         menu.autoenablesItems = false
 
         statusLine.isEnabled = false
@@ -90,10 +102,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(holder)
             menu.setSubmenu(sub, for: holder)
         }
+
+        let entries = History.recent(5)
+        if !entries.isEmpty {
+            let holder = NSMenuItem(title: "History", action: nil, keyEquivalent: "")
+            holder.isEnabled = false
+            let sub = NSMenu()
+            let fmt = DateFormatter()
+            fmt.dateFormat = "MM-dd HH:mm"
+            for e in entries {
+                let arrow = e.dir == "in" ? "↓" : "↑"
+                let mark = e.ok ? "" : "  ✗"
+                let when = fmt.string(from: Date(timeIntervalSince1970: e.ts))
+                let item = NSMenuItem(
+                    title: "\(arrow) \(e.name)\(mark) — \(e.peer), \(History.humanSize(e.size)), \(when)",
+                    action: nil,
+                    keyEquivalent: ""
+                )
+                item.isEnabled = false
+                sub.addItem(item)
+            }
+            menu.addItem(holder)
+            menu.setSubmenu(sub, for: holder)
+        }
+
         menu.addItem(.separator())
         menu.addItem(makeItem("Quit MGBridge", #selector(quitAction), "q"))
-
-        statusItem.menu = menu
     }
 
     private func makeItem(_ title: String, _ action: Selector, _ key: String) -> NSMenuItem {
@@ -187,6 +221,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setStatus("Sending \(urls.count) file(s) to \(target.name)…")
 
         startSession(to: target, payload: .files(urls), progressLabel: urls) { [weak self] result in
+            if case .success(let ok) = result {
+                for (i, url) in urls.enumerated() {
+                    let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+                    let size = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
+                    History.append(History.Entry(
+                        ts: Date().timeIntervalSince1970,
+                        dir: "out",
+                        peer: target.name,
+                        name: url.lastPathComponent,
+                        size: size,
+                        ok: i < ok.count ? ok[i] : false
+                    ))
+                }
+            }
             switch result {
             case .success(let ok) where ok.allSatisfy({ $0 }):
                 self?.setStatus("Sent to \(target.name) ✔")

@@ -121,6 +121,14 @@ class MainActivity : AppCompatActivity() {
             text = "Send test file"
             setOnClickListener { sendTestFile() }
         })
+        root.addView(Button(this).apply {
+            text = "Transfer history"
+            setOnClickListener {
+                startActivity(
+                    Intent(this@MainActivity, com.mgbridge.companion.history.HistoryActivity::class.java)
+                )
+            }
+        })
 
         return root
     }
@@ -133,8 +141,9 @@ class MainActivity : AppCompatActivity() {
                 val f = File(cacheDir, "mgbridge-test.txt").apply {
                     writeText("Hello from ${android.os.Build.MODEL} at ${System.currentTimeMillis()}\n")
                 }
-                PeerConnector.connect(this@MainActivity).use { socket ->
-                    val ok = Sender(this@MainActivity).send(socket, listOf(android.net.Uri.fromFile(f)))
+                PeerConnector.connect(this@MainActivity).use { conn ->
+                    val ok = Sender(this@MainActivity)
+                        .send(conn.socket, listOf(android.net.Uri.fromFile(f)), conn.peerName)
                     runOnUiThread {
                         Toast.makeText(
                             this@MainActivity,

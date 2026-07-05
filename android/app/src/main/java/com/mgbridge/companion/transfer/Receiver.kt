@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import com.mgbridge.companion.BridgeService
+import com.mgbridge.companion.history.HistoryStore
 import com.mgbridge.companion.net.Frame
 import com.mgbridge.companion.net.Framing
 import com.mgbridge.companion.net.PROTOCOL_VERSION
@@ -39,10 +40,7 @@ class Receiver(private val ctx: Context) {
         while (true) {
             when (val frame = Framing.readFrame(inp) ?: return) {
                 is Frame.Offer -> receiveFiles(hello.name, frame, inp, out, socket)
-                is Frame.Clip -> {
-                    // Clipboard push lands in M4; don't kill the session meanwhile.
-                    Framing.writeFrame(out, Frame.Err("clip not supported yet"))
-                }
+                is Frame.Clip -> applyClip(hello.name, frame.text)
                 is Frame.Bye -> return
                 else -> {
                     Framing.writeFrame(out, Frame.Err("unexpected ${frame::class.simpleName}"))
@@ -93,6 +91,16 @@ class Receiver(private val ctx: Context) {
         }
         Framing.writeFrame(out, Frame.Receipt(ok))
 
+        saved.forEachIndexed { i, s ->
+            HistoryStore.append(
+                ctx,
+                HistoryStore.Entry(
+                    System.currentTimeMillis(), "in", senderName,
+                    s.displayName, offer.files[i].size, ok[i]
+                )
+            )
+        }
+
         val good = ok.count { it }
         Log.i(BridgeService.TAG, "received $good/${ok.size} files from $senderName")
         if (good > 0) {
@@ -135,6 +143,45 @@ class Receiver(private val ctx: Context) {
 
     private fun discard(uri: Uri) {
         try { ctx.contentResolver.delete(uri, null, null) } catch (_: Exception) {}
+    }
+
+    /**
+     * Applies a clipboard push. Background `setPrimaryClip` is silently dropped on
+     * some One UI builds, so the notification carries a Copy action (an activity
+     * trampoline — foreground writes are always allowed) as the fallback.
+     */
+    private fun applyClip(sender: String, text: String) {
+        try {
+            ctx.getSystemService(android.content.ClipboardManager::class.java)
+                .setPrimaryClip(android.content.ClipData.newPlainText("MGBridge", text))
+        } catch (e: Exception) {
+            Log.w(BridgeService.TAG, "background clipboard write failed: ${e.message}")
+        }
+        HistoryStore.append(
+            ctx,
+            HistoryStore.Entry(System.currentTimeMillis(), "in", sender, "[clipboard]", text.length.toLong(), true)
+        )
+
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL, "Transfers", NotificationManager.IMPORTANCE_DEFAULT)
+        )
+        val builder = Notification.Builder(ctx, CHANNEL)
+            .setContentTitle("Clipboard from $sender")
+            .setContentText(text.take(120))
+            .setSmallIcon(android.R.drawable.stat_notify_more)
+            .setAutoCancel(true)
+        if (text.length < 90_000) { // stay under the intent-extra size limit
+            val copyIntent = android.content.Intent(ctx, com.mgbridge.companion.CopyClipActivity::class.java)
+                .putExtra(com.mgbridge.companion.CopyClipActivity.EXTRA_TEXT, text)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            val pi = android.app.PendingIntent.getActivity(
+                ctx, text.hashCode(), copyIntent,
+                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(Notification.Action.Builder(null, "Copy", pi).build())
+        }
+        nm.notify(System.currentTimeMillis().toInt(), builder.build())
     }
 
     private fun notify(title: String, text: String) {

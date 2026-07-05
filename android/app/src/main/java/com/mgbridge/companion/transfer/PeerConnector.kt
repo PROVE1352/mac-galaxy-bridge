@@ -18,11 +18,15 @@ object PeerConnector {
 
     class NoPeerException : Exception("no paired peer reachable")
 
+    class Connection(val socket: SSLSocket, val peerName: String) : AutoCloseable {
+        override fun close() = socket.close()
+    }
+
     suspend fun connect(
         ctx: Context,
         preferredName: String? = null,
         timeoutMs: Long = 12_000
-    ): SSLSocket {
+    ): Connection {
         val trustedPrefixes = TrustStore.fingerprints(ctx).mapTo(HashSet()) { it.take(16) }
         if (trustedPrefixes.isEmpty()) throw NoPeerException()
 
@@ -39,7 +43,10 @@ object PeerConnector {
                     val key = "${peer.host.hostAddress}:${peer.port}"
                     if (!tried.add(key)) continue
                     try {
-                        return@withTimeout BridgeClient.connect(ctx, peer.host, peer.port)
+                        return@withTimeout Connection(
+                            BridgeClient.connect(ctx, peer.host, peer.port),
+                            peer.name
+                        )
                     } catch (e: Exception) {
                         Log.w(BridgeService.TAG, "connect to ${peer.name} failed: ${e.message}")
                     }
