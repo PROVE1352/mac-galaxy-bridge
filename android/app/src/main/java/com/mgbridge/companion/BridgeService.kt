@@ -12,11 +12,20 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import com.mgbridge.companion.net.BridgeServer
+import com.mgbridge.companion.net.Discovery
+import com.mgbridge.companion.net.TlsIdentity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * Always-on foreground service. Holds a runtime-registered receiver for the Mac's
  * Bluetooth ACL connect/disconnect events — which fire reliably (verified on device),
- * unlike Samsung's routine trigger which gates on profile-level connection.
+ * unlike Samsung's routine trigger which gates on profile-level connection — and owns
+ * the transfer server: TLS listener + Bonjour registration, torn down with the service.
  */
 class BridgeService : Service() {
 
@@ -52,11 +61,28 @@ class BridgeService : Service() {
         }
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var server: BridgeServer? = null
+    private var discovery: Discovery? = null
+
     override fun onCreate() {
         super.onCreate()
         running = true
         createChannel()
         startForeground(NOTIF_ID, buildNotification("Watching for your Mac…"))
+
+        scope.launch {
+            try {
+                val srv = BridgeServer(this@BridgeService, scope)
+                val disc = Discovery(this@BridgeService)
+                server = srv
+                discovery = disc
+                val port = srv.start()
+                disc.register(port, TlsIdentity.fingerprint())
+            } catch (e: Exception) {
+                Log.e(TAG, "transfer server failed to start: ${e.message}", e)
+            }
+        }
 
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
@@ -94,6 +120,9 @@ class BridgeService : Service() {
             unregisterReceiver(btReceiver)
         } catch (_: Exception) {
         }
+        discovery?.unregister()
+        server?.stop()
+        scope.cancel()
         Log.i(TAG, "BridgeService stopped")
         super.onDestroy()
     }

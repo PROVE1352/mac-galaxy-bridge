@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A bridge: two piers and a connecting span, white on the brand background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group>
+        <!-- left pier (the Mac) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M28,40 h12 a2,2 0 0 1 2,2 v24 a2,2 0 0 1 -2,2 h-12 a2,2 0 0 1 -2,-2 v-24 a2,2 0 0 1 2,-2 z" />
+        <!-- right pier (the Galaxy) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M68,36 h12 a2,2 0 0 1 2,2 v32 a2,2 0 0 1 -2,2 h-12 a2,2 0 0 1 -2,-2 v-32 a2,2 0 0 1 2,-2 z" />
+        <!-- span -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M44,51 h22 v6 h-22 z" />
+        <!-- arrows on the span -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M50,44 l-6,6 6,6 v-4 h6 v-4 h-6 z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M60,64 l6,-6 -6,-6 v4 h-6 v4 h6 z" />
+    </group>
+</vector>
