@@ -366,9 +366,13 @@ final class SendSession {
         send(.hello(v: Frame.protocolVersion, name: deviceName()))
         switch payload {
         case .clip(let text):
-            send(.clip(text: text))
-            send(.bye)
-            succeed([])
+            // Chain on contentProcessed — cancelling right after queueing could
+            // drop the payload before it ever hits the wire.
+            send(.clip(text: text)) { [weak self] in
+                self?.send(.bye) { [weak self] in
+                    self?.succeed([])
+                }
+            }
 
         case .files(let fileURLs):
             urls = fileURLs
@@ -502,11 +506,13 @@ final class SendSession {
         pumpChunk()
     }
 
-    private func send(_ frame: Frame) {
+    private func send(_ frame: Frame, then: (() -> Void)? = nil) {
         guard let data = try? Framing.encode(frame) else { return }
         connection.send(content: data, completion: .contentProcessed { [weak self] error in
             if let error {
                 self?.fail(error)
+            } else {
+                then?()
             }
         })
     }
