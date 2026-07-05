@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Xcode
+macos/**/xcuserdata/
+macos/**/*.xcuserstate
+macos/build/
+macos/DerivedData/
+
+# Android / Gradle
+android/**/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/*.iml
+android/captures/
+
+# misc
+*.log
