@@ -22,6 +22,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".PairingActivity"
+            android:exported="false"
+            android:label="Pair with Mac" />
+
         <service
             android:name=".BridgeService"
             android:exported="false"

@@ -16,9 +16,19 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.mgbridge.companion.net.TrustStore
+import com.mgbridge.companion.transfer.PeerConnector
+import com.mgbridge.companion.transfer.Sender
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var status: TextView
     private lateinit var macField: EditText
 
@@ -100,13 +110,57 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        root.addView(heading("3. File transfer"))
+        root.addView(Button(this).apply {
+            text = "Pair with a Mac"
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, PairingActivity::class.java))
+            }
+        })
+        root.addView(Button(this).apply {
+            text = "Send test file"
+            setOnClickListener { sendTestFile() }
+        })
+
         return root
+    }
+
+    /** Debug path until the share-sheet target lands: sends a tiny text file to a paired peer. */
+    private fun sendTestFile() {
+        Toast.makeText(this, "Looking for a paired device…", Toast.LENGTH_SHORT).show()
+        scope.launch {
+            try {
+                val f = File(cacheDir, "mgbridge-test.txt").apply {
+                    writeText("Hello from ${android.os.Build.MODEL} at ${System.currentTimeMillis()}\n")
+                }
+                PeerConnector.connect(this@MainActivity).use { socket ->
+                    val ok = Sender(this@MainActivity).send(socket, listOf(android.net.Uri.fromFile(f)))
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            if (ok.all { it }) "Sent ✔" else "Peer reported a failed file",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Send failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun refreshStatus() {
         val svc = if (BridgeService.running) "running" else "stopped"
         val acc = if (HotspotAccessibilityService.instance != null) "enabled" else "OFF (tap below)"
-        status.text = "Service: $svc\nAccessibility: $acc\nWatching Mac: ${Prefs.macAddr(this)}"
+        val paired = TrustStore.peers(this).joinToString { it.name }.ifEmpty { "none" }
+        status.text = "Service: $svc\nAccessibility: $acc\nWatching Mac: ${Prefs.macAddr(this)}\nPaired: $paired"
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 
     private fun requestNeededPermissions() {
